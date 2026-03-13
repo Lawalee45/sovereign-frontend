@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { getJurisdictionConfig } from "@/lib/jurisdictions";
 import {
-  getExportPdfUrl,
   postCompetentProfSignoff
 } from "@/lib/api";
 
@@ -12,13 +11,15 @@ interface Props {
   jurisdiction: string;
   clientHash: string;
   onClose: () => void;
+  onSuccess: () => void | Promise<void>;
 }
 
 export function CompetentProfModal({
   open,
   jurisdiction,
   clientHash,
-  onClose
+  onClose,
+  onSuccess
 }: Props) {
   const [checked, setChecked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -38,9 +39,8 @@ export function CompetentProfModal({
         jurisdiction,
         config.competentProfText
       );
-      const url = getExportPdfUrl(clientHash);
-      window.location.href = url;
       onClose();
+      await onSuccess();
     } catch (err) {
       setError("Sign-off failed. Please try again.");
     } finally {
@@ -91,7 +91,14 @@ export function CompetentProfModal({
             disabled={!checked || submitting}
             onClick={handleConfirm}
           >
-            {submitting ? "Submitting…" : "Confirm & Export"}
+            {submitting ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="inline-block h-3 w-3 rounded-full border-2 border-black/70 border-t-transparent animate-spin" />
+                Submitting…
+              </span>
+            ) : (
+              "Confirm"
+            )}
           </button>
         </div>
       </div>

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAuth, clearAuth } from "@/lib/auth";
-import { getArmSummary, getBlocks } from "@/lib/api";
+import { getArmSummary, getBlocks, getExportPdfUrl } from "@/lib/api";
 import { deriveVaultState, VaultState } from "@/lib/vaultStates";
 import { getJurisdictionConfig } from "@/lib/jurisdictions";
 import { CompetentProfModal } from "./components/CompetentProfModal";
@@ -108,6 +108,7 @@ export default function DashboardPage({
   const [vaultState, setVaultState] = useState<VaultState>("LOCKED");
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [lockedPolling, setLockedPolling] = useState(false);
   const lockedIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -228,6 +229,23 @@ export default function DashboardPage({
 
   const showExportButton =
     vaultState === "REVIEWED" || vaultState === "EXPORT_READY";
+
+  const handleExport = async () => {
+    if (!clientHash || exporting) return;
+    if (vaultState === "EXPORT_READY") {
+      setExporting(true);
+      try {
+        const url = getExportPdfUrl(clientHash);
+        window.open(url, "_blank", "noopener,noreferrer");
+      } finally {
+        setExporting(false);
+      }
+      return;
+    }
+
+    // Not export-ready: prompt sign-off flow.
+    setShowModal(true);
+  };
 
   return (
     <div className="min-h-screen bg-[#0a0f1a] text-white">
@@ -404,17 +422,28 @@ export default function DashboardPage({
 
         {showExportButton && clientHash && (
           <section className="flex justify-end mt-2">
-            <button
-              type="button"
-              onClick={() => setShowModal(true)}
-              className={`px-4 py-2 rounded-md text-sm font-medium ${
-                vaultState === "EXPORT_READY"
-                  ? "bg-emerald-500 text-black shadow-[0_0_25px_rgba(34,197,94,0.6)]"
-                  : "border border-emerald-400 text-emerald-200 bg-transparent"
-              }`}
-            >
-              Export Forensic Report
-            </button>
+            <div className="relative group">
+              <button
+                type="button"
+                onClick={handleExport}
+                disabled={exporting}
+                className={`px-4 py-2 rounded-md text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed ${
+                  vaultState === "EXPORT_READY"
+                    ? "bg-emerald-500 text-black shadow-[0_0_25px_rgba(34,197,94,0.6)]"
+                    : "border border-emerald-400 text-emerald-200 bg-transparent"
+                }`}
+              >
+                {exporting ? "Opening…" : "Export Forensic Report"}
+              </button>
+
+              {vaultState !== "EXPORT_READY" && (
+                <div className="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity absolute right-0 -top-2 -translate-y-full">
+                  <div className="max-w-xs bg-black/90 border border-white/15 text-slate-100 text-[11px] px-3 py-2 rounded-md shadow-lg">
+                    Competent Professional sign-off is required before export.
+                  </div>
+                </div>
+              )}
+            </div>
           </section>
         )}
       </div>
@@ -449,6 +478,10 @@ export default function DashboardPage({
         clientHash={clientHash ?? ""}
         jurisdiction={jurisdiction}
         onClose={() => setShowModal(false)}
+        onSuccess={async () => {
+          if (!clientHash) return;
+          await loadData(clientHash);
+        }}
       />
     </div>
   );

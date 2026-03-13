@@ -27,6 +27,16 @@ export async function onboardClient(words: string[], jurisdiction = "uk") {
   return res.json();
 }
 
+export async function onboardCompany(company_name: string) {
+  const res = await fetch(`${API_BASE}/onboard`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ company_name })
+  });
+  if (!res.ok) throw new Error("Onboard failed");
+  return res.json();
+}
+
 export async function getArmSummary(hash: string) {
   const res = await fetch(`${API_BASE}/arm/summary/${hash}`);
   if (!res.ok) throw new Error("ARM summary failed");
@@ -59,5 +69,33 @@ export async function postCompetentProfSignoff(
 
 export function getExportPdfUrl(hash: string) {
   return `${API_BASE}/export/pdf/${hash}`;
+}
+
+const ADMIN_API_KEY = "SOVEREIGN-VAULT-MASTER-KEY-2026";
+
+export async function getClients() {
+  const res = await fetch(`${API_BASE}/clients`, {
+    headers: { "x-api-key": ADMIN_API_KEY },
+  });
+  if (!res.ok) throw new Error("Failed to fetch clients");
+  return res.json();
+}
+
+export async function postAdminAudit(client_hash: string) {
+  const res = await fetch(`${API_BASE}/admin/audit/${client_hash}`, {
+    method: "POST",
+    headers: { "x-api-key": ADMIN_API_KEY },
+  });
+  if (!res.ok) throw new Error("Audit failed");
+  return res.json();
+}
+
+export async function postAdminActivate(client_hash: string) {
+  const res = await fetch(`${API_BASE}/admin/activate/${client_hash}`, {
+    method: "POST",
+    headers: { "x-api-key": ADMIN_API_KEY },
+  });
+  if (!res.ok) throw new Error("Activate failed");
+  return res.json();
 }
 
