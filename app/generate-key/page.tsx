@@ -2,7 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { onboardCompany } from "@/lib/api";
+import { onboardWithJurisdiction } from "@/lib/api";
 
 const WORD_COUNT = 12;
 const JURISDICTIONS = [
@@ -11,25 +11,41 @@ const JURISDICTIONS = [
   { value: "uae", label: "UAE" },
 ] as const;
 
-function extractPaperKey(payload: unknown): string[] | null {
-  if (!payload || typeof payload !== "object") return null;
-  const p = payload as Record<string, unknown>;
-  if (Array.isArray(p.paper_key)) {
-    return p.paper_key.map((w) => String(w));
-  }
-  if (typeof p.paper_key === "string") {
-    return p.paper_key.trim().split(/\s+/).filter(Boolean);
-  }
-  if (Array.isArray(p.words)) return p.words.map((w) => String(w));
-  if (typeof p.paperKey === "string") {
-    return p.paperKey.trim().split(/\s+/).filter(Boolean);
-  }
-  return null;
+const WORD_LIST: string[] = [
+  "apple", "bird", "bridge", "cloud", "coast", "creek", "daisy", "dolphin",
+  "eagle", "field", "flame", "forest", "grape", "haven", "hills", "horse",
+  "ivy", "lake", "lamp", "leaf", "maple", "moon", "mountain", "ocean",
+  "olive", "orchid", "otter", "pearl", "pine", "pond", "river", "rock",
+  "rose", "sand", "shell", "shore", "sky", "star", "stone", "stream",
+  "sun", "swan", "tiger", "tulip", "valley", "water", "wave", "wolf",
+  "anchor", "basket", "bench", "blade", "brush", "candle", "clock", "cloth",
+  "coral", "crown", "cup", "desk", "door", "drum", "feather", "flask",
+  "gate", "glass", "hammer", "key", "knife", "ladder", "lantern", "lock",
+  "mirror", "needle", "paper", "path", "plate", "ring", "rope", "shelf",
+  "shield", "spoon", "table", "thread", "tower", "vase", "wheel", "window",
+  "alder", "birch", "cedar", "clover", "fern", "frost", "haze", "honey",
+  "jade", "jasmine", "juniper", "larch", "lily", "moss", "nectar", "oak",
+  "petal", "quartz", "rain", "snow", "spruce", "storm", "thorn", "vine",
+  "willow", "amber", "basin", "beacon", "bloom", "breeze", "canopy", "cascade",
+  "dawn", "dusk", "ember", "garden", "glade", "grove", "harbor", "haven",
+  "hedge", "horizon", "meadow", "mist", "pebble", "prairie", "ridge", "summit",
+  "timber", "twig", "acorn", "berry", "blossom", "bough", "brook", "bush",
+  "chime", "cipher", "cobalt", "coral", "crimson", "crystal", "ember", "flint",
+  "garnet", "glacier", "granite", "haze", "hearth", "ivory", "jade", "jet",
+  "lime", "marble", "mint", "opal", "pearl", "rust", "sapphire", "silver",
+  "slate", "steel", "topaz", "umber", "zinc", "arch", "beam", "bolt", "card",
+  "chord", "code", "curve", "digit", "flask", "frame", "gauge", "grid",
+  "hinge", "latch", "lever", "logic", "matrix", "pixel", "pulse", "relay",
+  "scope", "sensor", "signal", "socket", "token", "trace", "vector", "volt",
+];
+
+function pickRandomWords(list: string[], count: number): string[] {
+  const shuffled = [...list].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
 }
 
 export default function GenerateKeyPage() {
   const router = useRouter();
-  const [companyName, setCompanyName] = useState("");
   const [jurisdiction, setJurisdiction] = useState<string>("uk");
   const [words, setWords] = useState<string[] | null>(null);
   const [ack, setAck] = useState(false);
@@ -37,8 +53,8 @@ export default function GenerateKeyPage() {
   const [error, setError] = useState<string | null>(null);
 
   const canSubmit = useMemo(
-    () => companyName.trim().length > 0 && ["uk", "us", "uae"].includes(jurisdiction),
-    [companyName, jurisdiction]
+    () => ["uk", "us", "uae"].includes(jurisdiction),
+    [jurisdiction]
   );
 
   const handleSubmit = async (e: FormEvent) => {
@@ -46,19 +62,16 @@ export default function GenerateKeyPage() {
     if (!canSubmit || loading) return;
     setLoading(true);
     setError(null);
+    const twelveWords = pickRandomWords(WORD_LIST, WORD_COUNT);
     try {
-      const res = await onboardCompany(
-        companyName.trim(),
+      await onboardWithJurisdiction(
+        twelveWords,
         jurisdiction.toLowerCase()
       );
-      const extracted = extractPaperKey(res);
-      if (!extracted || extracted.length !== WORD_COUNT) {
-        throw new Error("Unexpected response: expected 12-word paper key");
-      }
-      setWords(extracted);
+      setWords(twelveWords);
       setAck(false);
     } catch {
-      setError("Failed to generate paper key. Please try again.");
+      setError("Failed to create vault. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -81,19 +94,6 @@ export default function GenerateKeyPage() {
 
         {!words ? (
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-[10px] uppercase tracking-[0.25em] text-slate-400">
-                Company name
-              </label>
-              <input
-                type="text"
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                placeholder="Acme Research Ltd"
-                className="w-full rounded-md bg-white/10 border border-white/10 px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#003153] focus:border-[#003153]"
-              />
-            </div>
-
             <div className="space-y-1">
               <label className="text-[10px] uppercase tracking-[0.25em] text-slate-400">
                 Jurisdiction
@@ -122,7 +122,7 @@ export default function GenerateKeyPage() {
               disabled={!canSubmit || loading}
               className="w-full rounded-md bg-[#003153] hover:bg-[#003153]/90 text-sm font-medium py-2.5 text-white disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {loading ? "Generating…" : "Generate Paper Key"}
+              {loading ? "Creating vault…" : "Generate Paper Key"}
             </button>
 
             <p className="text-xs text-slate-400">

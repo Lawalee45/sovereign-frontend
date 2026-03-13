@@ -27,6 +27,24 @@ export async function onboardClient(words: string[], jurisdiction = "uk") {
   return res.json();
 }
 
+/** POST /onboard with words array and jurisdiction. Body: { words, jurisdiction }. */
+export async function onboardWithJurisdiction(
+  words: string[],
+  jurisdiction: string
+) {
+  const res = await fetch(`${API_BASE}/onboard`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ words, jurisdiction }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    console.error("[onboard] failed — status:", res.status, "body:", body);
+    throw new Error("Onboard failed");
+  }
+  return res.json();
+}
+
 const ADMIN_API_KEY = "SOVEREIGN-VAULT-MASTER-KEY-2026";
 
 export async function onboardCompany(company_name: string, jurisdiction: string) {
