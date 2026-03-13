@@ -91,7 +91,10 @@ export async function getClients() {
 export async function postAdminAudit(client_hash: string) {
   const res = await fetch(`${API_BASE}/admin/audit/${client_hash}`, {
     method: "POST",
-    headers: { "x-api-key": ADMIN_API_KEY },
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": ADMIN_API_KEY,
+    },
   });
   if (!res.ok) {
     const body = await res.text();
@@ -104,7 +107,10 @@ export async function postAdminAudit(client_hash: string) {
 export async function postAdminActivate(client_hash: string) {
   const res = await fetch(`${API_BASE}/admin/activate/${client_hash}`, {
     method: "POST",
-    headers: { "x-api-key": ADMIN_API_KEY },
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": ADMIN_API_KEY,
+    },
   });
   if (!res.ok) {
     const body = await res.text();
