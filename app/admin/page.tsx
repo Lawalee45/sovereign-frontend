@@ -28,6 +28,11 @@ export default function AdminPage() {
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<{
+    type: "audit" | "activate";
+    success: boolean;
+    message: string;
+  } | null>(null);
   const [actionLoading, setActionLoading] = useState<Record<string, "audit" | "activate" | null>>({});
 
   const handleUnlock = (e: FormEvent) => {
@@ -49,7 +54,12 @@ export default function AdminPage() {
     getClients()
       .then((data) => {
         if (cancelled) return;
-        const list = Array.isArray(data) ? data : (data as any)?.clients ?? [];
+        const raw = Array.isArray(data) ? data : (data as any)?.clients ?? [];
+        const list = raw.map((c: ClientRow) => ({
+          client_hash: String(c.client_hash ?? ""),
+          is_active: c.is_active,
+          blocks_analysed: c.blocks_analysed,
+        }));
         setClients(list);
         return Promise.all(
           list.map((c: ClientRow) =>
@@ -81,13 +91,22 @@ export default function AdminPage() {
   const runAudit = async (client_hash: string) => {
     setActionLoading((s) => ({ ...s, [client_hash]: "audit" }));
     setError(null);
+    setActionFeedback(null);
     try {
       await postAdminAudit(client_hash);
-      const list = await getClients();
-      const next = Array.isArray(list) ? list : (list as any)?.clients ?? [];
+      const data = await getClients();
+      const raw = Array.isArray(data) ? data : (data as any)?.clients ?? [];
+      const next = raw.map((c: ClientRow) => ({
+        client_hash: String(c.client_hash ?? ""),
+        is_active: c.is_active,
+        blocks_analysed: c.blocks_analysed,
+      }));
       setClients(next);
+      setActionFeedback({ type: "audit", success: true, message: "Audit completed successfully." });
     } catch (err: any) {
-      setError(err?.message ?? "Audit failed.");
+      const msg = err?.message ?? "Audit failed.";
+      setError(msg);
+      setActionFeedback({ type: "audit", success: false, message: msg });
     } finally {
       setActionLoading((s) => ({ ...s, [client_hash]: null }));
     }
@@ -96,13 +115,22 @@ export default function AdminPage() {
   const runActivate = async (client_hash: string) => {
     setActionLoading((s) => ({ ...s, [client_hash]: "activate" }));
     setError(null);
+    setActionFeedback(null);
     try {
       await postAdminActivate(client_hash);
-      const list = await getClients();
-      const next = Array.isArray(list) ? list : (list as any)?.clients ?? [];
+      const data = await getClients();
+      const raw = Array.isArray(data) ? data : (data as any)?.clients ?? [];
+      const next = raw.map((c: ClientRow) => ({
+        client_hash: String(c.client_hash ?? ""),
+        is_active: c.is_active,
+        blocks_analysed: c.blocks_analysed,
+      }));
       setClients(next);
+      setActionFeedback({ type: "activate", success: true, message: "Activation completed successfully." });
     } catch (err: any) {
-      setError(err?.message ?? "Activate failed.");
+      const msg = err?.message ?? "Activate failed.";
+      setError(msg);
+      setActionFeedback({ type: "activate", success: false, message: msg });
     } finally {
       setActionLoading((s) => ({ ...s, [client_hash]: null }));
     }
@@ -164,6 +192,18 @@ export default function AdminPage() {
         {error && (
           <div className="mb-4 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-400">
             {error}
+          </div>
+        )}
+
+        {actionFeedback && (
+          <div
+            className={`mb-4 rounded-md border px-3 py-2 text-sm ${
+              actionFeedback.success
+                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                : "border-red-500/40 bg-red-500/10 text-red-400"
+            }`}
+          >
+            {actionFeedback.message}
           </div>
         )}
 
