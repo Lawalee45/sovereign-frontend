@@ -29,18 +29,15 @@ export async function onboardClient(words: string[], jurisdiction = "uk") {
 
 const ADMIN_API_KEY = "SOVEREIGN-VAULT-MASTER-KEY-2026";
 
-export async function onboardCompany(company_name: string) {
+export async function onboardCompany(company_name: string, jurisdiction: string) {
   const res = await fetch(`${API_BASE}/onboard`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": ADMIN_API_KEY,
-    },
-    body: JSON.stringify({ company_name }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ company_name, jurisdiction }),
   });
   if (!res.ok) {
     const body = await res.text();
-    console.error("[onboard] failed:", res.status, body);
+    console.error("[onboard] failed — status:", res.status, "body:", body);
     throw new Error("Onboard failed");
   }
   return res.json();
