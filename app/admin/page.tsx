@@ -3,7 +3,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import {
   getClients,
-  getArmSummary,
   postAdminAudit,
   postAdminActivate,
 } from "@/lib/api";
@@ -13,12 +12,18 @@ const ADMIN_PASSWORD = "SOVEREIGN-ADMIN-2026";
 interface ClientRow {
   client_hash: string;
   is_active?: boolean;
-  blocks_analysed?: number;
+  blocks?: number;
 }
 
 function truncateHash(hash: string) {
   if (!hash || hash.length <= 12) return hash;
   return `${hash.slice(0, 8)}...${hash.slice(-4)}`;
+}
+
+function isValidVault(client: ClientRow): boolean {
+  const hash = client.client_hash ?? "";
+  const blockCount = client.blocks ?? 0;
+  return hash.includes("-") && blockCount > 1;
 }
 
 export default function AdminPage() {
@@ -55,27 +60,14 @@ export default function AdminPage() {
       .then((data) => {
         if (cancelled) return;
         const raw = Array.isArray(data) ? data : (data as any)?.clients ?? [];
-        const list = raw.map((c: ClientRow) => ({
-          client_hash: String(c.client_hash ?? ""),
-          is_active: c.is_active,
-          blocks_analysed: c.blocks_analysed,
-        }));
-        setClients(list);
-        return Promise.all(
-          list.map((c: ClientRow) =>
-            getArmSummary(c.client_hash).catch(() => null)
-          )
-        );
-      })
-      .then((summaries) => {
-        if (cancelled || !summaries) return;
-        setClients((prev) =>
-          prev.map((c, i) => ({
-            ...c,
-            blocks_analysed:
-              (summaries[i] as any)?.blocks_analysed ?? c.blocks_analysed ?? null,
+        const list = raw
+          .map((c: ClientRow) => ({
+            client_hash: String(c.client_hash ?? ""),
+            is_active: c.is_active,
+            blocks: c.blocks,
           }))
-        );
+          .filter(isValidVault);
+        setClients(list);
       })
       .catch((err) => {
         if (!cancelled) setError(err?.message ?? "Failed to load clients.");
@@ -96,11 +88,13 @@ export default function AdminPage() {
       await postAdminAudit(client_hash);
       const data = await getClients();
       const raw = Array.isArray(data) ? data : (data as any)?.clients ?? [];
-      const next = raw.map((c: ClientRow) => ({
-        client_hash: String(c.client_hash ?? ""),
-        is_active: c.is_active,
-        blocks_analysed: c.blocks_analysed,
-      }));
+      const next = raw
+        .map((c: ClientRow) => ({
+          client_hash: String(c.client_hash ?? ""),
+          is_active: c.is_active,
+          blocks: c.blocks,
+        }))
+        .filter(isValidVault);
       setClients(next);
       setActionFeedback({ type: "audit", success: true, message: "Audit completed successfully." });
     } catch (err: any) {
@@ -120,11 +114,13 @@ export default function AdminPage() {
       await postAdminActivate(client_hash);
       const data = await getClients();
       const raw = Array.isArray(data) ? data : (data as any)?.clients ?? [];
-      const next = raw.map((c: ClientRow) => ({
-        client_hash: String(c.client_hash ?? ""),
-        is_active: c.is_active,
-        blocks_analysed: c.blocks_analysed,
-      }));
+      const next = raw
+        .map((c: ClientRow) => ({
+          client_hash: String(c.client_hash ?? ""),
+          is_active: c.is_active,
+          blocks: c.blocks,
+        }))
+        .filter(isValidVault);
       setClients(next);
       setActionFeedback({ type: "activate", success: true, message: "Activation completed successfully." });
     } catch (err: any) {
@@ -249,8 +245,8 @@ export default function AdminPage() {
                     </span>
                     <span>
                       Blocks:{" "}
-                      {client.blocks_analysed != null
-                        ? client.blocks_analysed
+                      {client.blocks != null
+                        ? client.blocks
                         : "—"}
                     </span>
                   </div>
