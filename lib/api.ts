@@ -91,17 +91,18 @@ export async function getClients() {
 export async function postAdminAudit(client_hash: string) {
   const res = await fetch(`${API_BASE}/admin/audit/${client_hash}`, {
     method: "POST",
-    headers: {
+    headers: { 
       "Content-Type": "application/json",
-      "x-api-key": ADMIN_API_KEY,
+      "x-api-key": "SOVEREIGN-VAULT-MASTER-KEY-2026" 
     },
   });
-  if (!res.ok) {
-    const body = await res.text();
-    console.log("[postAdminAudit] failed:", res.status, body);
-    throw new Error("Audit failed");
+  console.log("[postAdminAudit] status:", res.status);
+  if (res.status === 200 || res.status === 201) {
+    return { success: true };
   }
-  return res.json();
+  const body = await res.text();
+  console.log("[postAdminAudit] error body:", body);
+  throw new Error("Audit failed");
 }
 
 export async function postAdminActivate(client_hash: string) {
