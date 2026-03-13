@@ -27,13 +27,22 @@ export async function onboardClient(words: string[], jurisdiction = "uk") {
   return res.json();
 }
 
+const ADMIN_API_KEY = "SOVEREIGN-VAULT-MASTER-KEY-2026";
+
 export async function onboardCompany(company_name: string) {
   const res = await fetch(`${API_BASE}/onboard`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ company_name })
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": ADMIN_API_KEY,
+    },
+    body: JSON.stringify({ company_name }),
   });
-  if (!res.ok) throw new Error("Onboard failed");
+  if (!res.ok) {
+    const body = await res.text();
+    console.error("[onboard] failed:", res.status, body);
+    throw new Error("Onboard failed");
+  }
   return res.json();
 }
 
@@ -71,8 +80,6 @@ export function getExportPdfUrl(hash: string) {
   return `${API_BASE}/export/pdf/${hash}`;
 }
 
-const ADMIN_API_KEY = "SOVEREIGN-VAULT-MASTER-KEY-2026";
-
 export async function getClients() {
   const res = await fetch(`${API_BASE}/clients`, {
     headers: { "x-api-key": ADMIN_API_KEY },
@@ -86,7 +93,11 @@ export async function postAdminAudit(client_hash: string) {
     method: "POST",
     headers: { "x-api-key": ADMIN_API_KEY },
   });
-  if (!res.ok) throw new Error("Audit failed");
+  if (!res.ok) {
+    const body = await res.text();
+    console.log("[postAdminAudit] failed:", res.status, body);
+    throw new Error("Audit failed");
+  }
   return res.json();
 }
 
@@ -95,7 +106,11 @@ export async function postAdminActivate(client_hash: string) {
     method: "POST",
     headers: { "x-api-key": ADMIN_API_KEY },
   });
-  if (!res.ok) throw new Error("Activate failed");
+  if (!res.ok) {
+    const body = await res.text();
+    console.log("[postAdminActivate] failed:", res.status, body);
+    throw new Error("Activate failed");
+  }
   return res.json();
 }
 
