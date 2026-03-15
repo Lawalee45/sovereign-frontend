@@ -268,7 +268,16 @@ export default function LandingPage() {
                   <Select value={grantType} onChange={setGrantType} options={GRANT_TYPES} />
                 </div>
                 <div>
-                  <label className="block text-[11px] uppercase tracking-widest text-slate-500 mb-2">Activity Type</label>
+                <div className="flex items-center gap-2 mb-2">
+  <label className="text-[11px] uppercase tracking-widest text-slate-500">Activity Type</label>
+  <div className="relative group cursor-help">
+    <div className="w-4 h-4 rounded-full bg-slate-700 text-slate-300 flex items-center justify-center text-[10px] font-bold border border-slate-600 hover:bg-slate-600 transition-colors">?</div>
+    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 p-2 bg-slate-800 text-xs text-slate-300 rounded shadow-xl border border-slate-700 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+      Select "Algorithmic" for software R&D, "Material Science" for hardware, or "Process Failure" if logging failed experiments.
+      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+    </div>
+  </div>
+</div>
                   <Select value={frictionType} onChange={setFrictionType} options={FRICTION_TYPES} />
                 </div>
               </div>
