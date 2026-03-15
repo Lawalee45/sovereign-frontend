@@ -108,7 +108,36 @@ function useCountUp(target: number, durationMs: number) {
 }
 
 // ─── BlankSlate ───────────────────────────────────────────────────────────────
-
+function CopyEndpoint({ label, endpoint, hint }: { label: string; endpoint: string; hint: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    await navigator.clipboard.writeText(endpoint);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-xs text-slate-300 font-medium">{label}</span>
+        <button
+          type="button"
+          onClick={copy}
+          className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-md border transition-colors ${
+            copied
+              ? "border-emerald-400/50 text-emerald-400 bg-emerald-400/10"
+              : "border-white/15 text-slate-400 hover:text-white hover:border-white/30"
+          }`}
+        >
+          {copied ? "✓ Copied" : "Copy"}
+        </button>
+      </div>
+      <div className="bg-[#060d18] border border-[#1e3a5f]/60 rounded-lg px-4 py-3 font-mono text-[11px] text-emerald-300 break-all">
+        {endpoint}
+      </div>
+      <p className="text-[10px] text-slate-600 mt-1.5">{hint}</p>
+    </div>
+  );
+}
 function BlankSlate({ onCreateVault }: { onCreateVault: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
@@ -539,7 +568,36 @@ export default function DashboardPage({
               </div>
             </section>
 
-            {/* Export button */}
+            {/* ── CTO Integration Panel — active vaults only ── */}
+{summary?.is_active && clientHash && (
+  <section className="bg-[#0a0f1a] border border-[#1e3a5f] rounded-2xl p-6">
+    <div className="flex items-center gap-3 mb-5">
+      <div className="relative flex-shrink-0">
+        <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+        <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping opacity-60" />
+      </div>
+      <div>
+        <div className="text-[11px] tracking-[0.3em] uppercase text-emerald-400">System Active</div>
+        <div className="text-sm text-white font-medium mt-0.5">CTO Integration Webhooks</div>
+      </div>
+    </div>
+    <p className="text-xs text-slate-500 mb-5 leading-relaxed">
+      Connect your development pipeline. Every commit and technical friction signal is automatically vaulted as immutable R&D evidence.
+    </p>
+    <div className="space-y-4">
+      <CopyEndpoint
+        label="GitHub Webhook URL"
+        endpoint={`${BACKEND_URL}/github/webhook/${clientHash}`}
+        hint="Add in GitHub repo → Settings → Webhooks. Content type: application/json"
+      />
+      <CopyEndpoint
+        label="Slack Slash Command URL"
+        endpoint={`${BACKEND_URL}/slack/friction/${clientHash}`}
+        hint="Add as Slack slash command URL. Use /vault [signal text] to capture friction."
+      />
+    </div>
+  </section>
+)}{/* Export button */}
             {showExportButton && clientHash && (
               <section className="flex justify-end mt-2">
                 <div className="relative group">
