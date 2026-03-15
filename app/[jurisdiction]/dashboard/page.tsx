@@ -87,18 +87,15 @@ function useCountUp(target: number, durationMs: number) {
     fromRef.current = display;
     targetRef.current = target;
     startRef.current = null;
-
     let frame: number;
     const step = (timestamp: number) => {
       if (startRef.current === null) startRef.current = timestamp;
       const elapsed = timestamp - startRef.current;
       const progress = Math.min(1, elapsed / durationMs);
-      const value =
-        fromRef.current + (targetRef.current - fromRef.current) * progress;
+      const value = fromRef.current + (targetRef.current - fromRef.current) * progress;
       setDisplay(value);
       if (progress < 1) frame = requestAnimationFrame(step);
     };
-
     frame = requestAnimationFrame(step);
     return () => cancelAnimationFrame(frame);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -107,7 +104,40 @@ function useCountUp(target: number, durationMs: number) {
   return display;
 }
 
-// ─── BlankSlate ───────────────────────────────────────────────────────────────
+// ─── FrictionPulse ────────────────────────────────────────────────────────────
+
+function FrictionPulse({ lastTimestamp }: { lastTimestamp: string | null }) {
+  const isArmed = (() => {
+    if (!lastTimestamp) return false;
+    const last = new Date(lastTimestamp).getTime();
+    const now = Date.now();
+    const daysSince = (now - last) / (1000 * 60 * 60 * 24);
+    return daysSince <= 14;
+  })();
+
+  return (
+    <div className={`flex items-center gap-2.5 px-4 py-2 rounded-full border w-fit ${
+      isArmed ? "border-emerald-500/30 bg-emerald-500/5" : "border-red-500/30 bg-red-500/5"
+    }`}>
+      <div className="relative flex-shrink-0">
+        <div className={`w-2 h-2 rounded-full ${isArmed ? "bg-emerald-400" : "bg-red-400"}`} />
+        {isArmed && (
+          <div className="absolute inset-0 w-2 h-2 rounded-full bg-emerald-400 animate-ping opacity-60" />
+        )}
+      </div>
+      <span className={`text-[11px] tracking-wide ${isArmed ? "text-emerald-300" : "text-red-300"}`}>
+        {isArmed
+          ? "Engine Armed: Capturing Friction"
+          : lastTimestamp
+            ? "Kill-Switch Engaged: Filing Halted (Awaiting Technical Context)"
+            : "Kill-Switch Engaged: No Signals Captured Yet"}
+      </span>
+    </div>
+  );
+}
+
+// ─── CopyEndpoint ─────────────────────────────────────────────────────────────
+
 function CopyEndpoint({ label, endpoint, hint }: { label: string; endpoint: string; hint: string }) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
@@ -138,37 +168,25 @@ function CopyEndpoint({ label, endpoint, hint }: { label: string; endpoint: stri
     </div>
   );
 }
+
+// ─── BlankSlate ───────────────────────────────────────────────────────────────
+
 function BlankSlate({ onCreateVault }: { onCreateVault: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
       <div className="w-16 h-16 rounded-full border border-[#1e3a5f] bg-[#0d1520] flex items-center justify-center mb-6">
-        <svg
-          className="w-7 h-7 text-[#C9A84C]"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
-          />
+        <svg className="w-7 h-7 text-[#C9A84C]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
         </svg>
       </div>
-      <h2 className="text-xl text-white font-medium tracking-wide mb-2">
-        No Forensic Vault Yet
-      </h2>
+      <h2 className="text-xl text-white font-medium tracking-wide mb-2">No Forensic Vault Yet</h2>
       <p className="text-sm text-slate-400 max-w-sm leading-relaxed mb-8">
-        Create your first vault to begin capturing R&D evidence on the
-        blockchain and building your HMRC-ready claim.
+        Create your first vault to begin capturing R&D evidence on the blockchain and building your HMRC-ready claim.
       </p>
       <button
         type="button"
         onClick={onCreateVault}
-        className="px-6 py-3 bg-[#C9A84C] text-black text-sm font-semibold rounded-xl
-          hover:bg-[#d4b560] transition-colors tracking-wide
-          shadow-[0_0_30px_rgba(201,168,76,0.2)]"
+        className="px-6 py-3 bg-[#C9A84C] text-black text-sm font-semibold rounded-xl hover:bg-[#d4b560] transition-colors tracking-wide shadow-[0_0_30px_rgba(201,168,76,0.2)]"
       >
         Create Your First Forensic Vault
       </button>
@@ -178,133 +196,80 @@ function BlankSlate({ onCreateVault }: { onCreateVault: () => void }) {
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
-export default function DashboardPage({
-  params,
-}: {
-  params: { jurisdiction: string };
-}) {
+export default function DashboardPage({ params }: { params: { jurisdiction: string } }) {
   const router = useRouter();
   const { jurisdiction: urlJurisdiction } = params;
 
-  // Auth — never blocks the dashboard from mounting
   const [clientHash, setClientHash] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
-
-  // Vault data
   const [jurisdiction, setJurisdiction] = useState<string>(urlJurisdiction);
   const [jurisdictionSaving, setJurisdictionSaving] = useState(false);
   const [summary, setSummary] = useState<ArmSummary | null>(null);
   const [blocks, setBlocks] = useState<BlockEvent[]>([]);
   const [vaultState, setVaultState] = useState<VaultState>("LOCKED");
   const [loading, setLoading] = useState(false);
-
-  // Modals
   const [showCPModal, setShowCPModal] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-
-  // Export
   const [exporting, setExporting] = useState(false);
-
-  // Activation polling (for already-paid users)
   const [lockedPolling, setLockedPolling] = useState(false);
   const lockedIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const config = getJurisdictionConfig(jurisdiction);
 
-  // ── Auth check — non-blocking ──────────────────────────────────────────────
   useEffect(() => {
     const auth = getAuth();
-    if (!auth.client_hash) {
-      router.replace("/login");
-      return;
-    }
+    if (!auth.client_hash) { router.replace("/login"); return; }
     setClientHash(auth.client_hash);
     if (auth.jurisdiction) setJurisdiction(auth.jurisdiction);
     setAuthChecked(true);
   }, [router]);
 
-  // ── Load vault data ────────────────────────────────────────────────────────
   const loadData = async (hash: string) => {
     setLoading(true);
     try {
-      const [arm, blk] = await Promise.all([
-        getArmSummary(hash),
-        getBlocks(hash, 20),
-      ]);
+      const [arm, blk] = await Promise.all([getArmSummary(hash), getBlocks(hash, 20)]);
       const armSummary = arm as ArmSummary;
       const blocksRes = blk as BlocksResponse;
       setSummary(armSummary);
       setBlocks(blocksRes.blocks ?? []);
-      setVaultState(
-        deriveVaultState(
-          armSummary.is_active,
-          armSummary.blocks_analysed,
-          armSummary.has_audit,
-          armSummary.has_competent_professional_signoff
-        )
-      );
+      setVaultState(deriveVaultState(armSummary.is_active, armSummary.blocks_analysed, armSummary.has_audit, armSummary.has_competent_professional_signoff));
     } catch {
-      // silently fail — dashboard remains usable
+      // silently fail
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (clientHash) void loadData(clientHash);
-  }, [clientHash]);
+  useEffect(() => { if (clientHash) void loadData(clientHash); }, [clientHash]);
+  useEffect(() => { return () => { if (lockedIntervalRef.current) clearInterval(lockedIntervalRef.current); }; }, []);
 
-  // Cleanup polling on unmount
-  useEffect(() => {
-    return () => {
-      if (lockedIntervalRef.current) clearInterval(lockedIntervalRef.current);
-    };
-  }, []);
-
-  // ── Jurisdiction change ────────────────────────────────────────────────────
   const handleJurisdictionChange = async (newJurisdiction: string) => {
     if (!clientHash || newJurisdiction === jurisdiction) return;
     setJurisdictionSaving(true);
     try {
-      const res = await fetch(
-        `${BACKEND_URL}/meta/${clientHash}/jurisdiction`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ jurisdiction: newJurisdiction }),
-        }
-      );
-      if (!res.ok) throw new Error("Failed to update jurisdiction");
+      const res = await fetch(`${BACKEND_URL}/meta/${clientHash}/jurisdiction`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jurisdiction: newJurisdiction }),
+      });
+      if (!res.ok) throw new Error("Failed");
       setJurisdiction(newJurisdiction);
       saveAuth(clientHash, summary?.is_active ?? false, newJurisdiction);
       router.replace(`/${newJurisdiction}/dashboard`);
     } catch {
-      // revert silently
+      // silent
     } finally {
       setJurisdictionSaving(false);
     }
   };
 
-  // ── Hero count-up ──────────────────────────────────────────────────────────
   const heroTarget = summary?.total_eligible_gbp_from_audit ?? 0;
   const heroDisplay = useCountUp(heroTarget, 1200);
+  const chainIntact = useMemo(() => !!summary && summary.blocks_analysed > 0, [summary]);
 
-  const chainIntact = useMemo(() => {
-    return !!summary && summary.blocks_analysed > 0;
-  }, [summary]);
+  const handleLogout = () => { clearAuth(); router.replace("/login"); };
+  const handleLockedVaultClick = () => setDrawerOpen(true);
 
-  // ── Handlers ───────────────────────────────────────────────────────────────
-  const handleLogout = () => {
-    clearAuth();
-    router.replace("/login");
-  };
-
-  // Opens Stripe drawer for locked vaults
-  const handleLockedVaultClick = () => {
-    setDrawerOpen(true);
-  };
-
-  // Poll ARM summary until vault activates (for users who already paid)
   const handleVerifyActivation = () => {
     if (!clientHash || lockedPolling) return;
     setLockedPolling(true);
@@ -312,21 +277,14 @@ export default function DashboardPage({
       try {
         const arm = (await getArmSummary(clientHash)) as ArmSummary;
         setSummary(arm);
-        const state = deriveVaultState(
-          arm.is_active,
-          arm.blocks_analysed,
-          arm.has_audit,
-          arm.has_competent_professional_signoff
-        );
+        const state = deriveVaultState(arm.is_active, arm.blocks_analysed, arm.has_audit, arm.has_competent_professional_signoff);
         setVaultState(state);
         if (state !== "LOCKED" && lockedIntervalRef.current) {
           clearInterval(lockedIntervalRef.current);
           setLockedPolling(false);
           void loadData(clientHash);
         }
-      } catch {
-        // silent
-      }
+      } catch { /* silent */ }
     }, 5000);
   };
 
@@ -340,58 +298,45 @@ export default function DashboardPage({
         a.href = url;
         a.download = `sovereign-vault-${clientHash}-audit.pdf`;
         a.click();
-      } finally {
-        setExporting(false);
-      }
+      } finally { setExporting(false); }
       return;
     }
     setShowCPModal(true);
   };
 
-  const lastAuditDisplay = summary?.last_audit_at
-    ? new Date(summary.last_audit_at).toLocaleString()
-    : "No audit yet";
+  const lastAuditDisplay = summary?.last_audit_at ? new Date(summary.last_audit_at).toLocaleString() : "No audit yet";
+  const showExportButton = vaultState === "REVIEWED" || vaultState === "EXPORT_READY";
 
-  const showExportButton =
-    vaultState === "REVIEWED" || vaultState === "EXPORT_READY";
+  const HIGH_VALUE_TYPES = ["FRICTION_SIGNAL", "GITHUB_COMMIT", "AUDIT_SUMMARY", "COMPETENT_PROFESSIONAL_SIGNOFF"];
+  const filteredBlocks = blocks.filter((b) => HIGH_VALUE_TYPES.includes(b.event_type));
 
-  // ── Banner ─────────────────────────────────────────────────────────────────
   const vaultBanner = (() => {
-    if (vaultState === "CAPTURING")
-      return (
-        <div className="w-full bg-amber-500/10 border-b border-amber-400/40 text-xs text-amber-100 px-4 py-2 text-center">
-          Vault Active — Evidence Capturing. AI audit pending.
-        </div>
-      );
-    if (vaultState === "REVIEWED")
-      return (
-        <div className="w-full bg-emerald-500/10 border-b border-emerald-400/60 text-xs text-emerald-100 px-4 py-2 text-center">
-          Audit Complete — Competent Professional sign-off required before export.
-        </div>
-      );
-    if (vaultState === "EXPORT_READY")
-      return (
-        <div className="w-full bg-emerald-500/20 border-b border-emerald-400/80 text-xs text-emerald-100 px-4 py-2 text-center shadow-[0_0_30px_rgba(34,197,94,0.55)]">
-          Audit Complete — Export ready for regulator submission.
-        </div>
-      );
+    if (vaultState === "CAPTURING") return (
+      <div className="w-full bg-amber-500/10 border-b border-amber-400/40 text-xs text-amber-100 px-4 py-2 text-center">
+        Vault Active — Evidence Capturing. AI audit pending.
+      </div>
+    );
+    if (vaultState === "REVIEWED") return (
+      <div className="w-full bg-emerald-500/10 border-b border-emerald-400/60 text-xs text-emerald-100 px-4 py-2 text-center">
+        Audit Complete — Competent Professional sign-off required before export.
+      </div>
+    );
+    if (vaultState === "EXPORT_READY") return (
+      <div className="w-full bg-emerald-500/20 border-b border-emerald-400/80 text-xs text-emerald-100 px-4 py-2 text-center shadow-[0_0_30px_rgba(34,197,94,0.55)]">
+        Audit Complete — Export ready for regulator submission.
+      </div>
+    );
     return null;
   })();
 
-  // ── Zero-state: auth not yet resolved ─────────────────────────────────────
-  if (!authChecked) {
-    return (
-      <div className="min-h-screen bg-[#060d18] flex items-center justify-center">
-        <div className="w-6 h-6 rounded-full border-2 border-[#C9A84C] border-t-transparent animate-spin" />
-      </div>
-    );
-  }
+  if (!authChecked) return (
+    <div className="min-h-screen bg-[#060d18] flex items-center justify-center">
+      <div className="w-6 h-6 rounded-full border-2 border-[#C9A84C] border-t-transparent animate-spin" />
+    </div>
+  );
 
-  // ── Zero-state: vault not found (no blocks at all) ─────────────────────────
-  const isEmptyVault =
-    !loading && summary !== null && summary.blocks_analysed === 0 && !summary.is_active;
+  const isEmptyVault = !loading && summary !== null && summary.blocks_analysed === 0 && !summary.is_active;
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#0a0f1a] text-white">
 
@@ -399,37 +344,20 @@ export default function DashboardPage({
       <div className="fixed top-0 left-0 right-0 z-30 bg-[#0a0f1a]/90 backdrop-blur-md border-b border-white/10">
         {vaultBanner}
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-
-          {/* Left: branding + jurisdiction */}
           <div className="flex items-center gap-4">
             <div>
-              <div className="text-[11px] tracking-[0.3em] uppercase text-slate-300">
-                SOVEREIGN VAULT
-              </div>
+              <div className="text-[11px] tracking-[0.3em] uppercase text-slate-300">SOVEREIGN VAULT</div>
               <div className="text-xs text-slate-400">{config.regime}</div>
             </div>
-
-            {/* Jurisdiction switcher */}
             <div className="relative">
               <select
                 value={jurisdiction}
                 disabled={jurisdictionSaving}
                 onChange={(e) => handleJurisdictionChange(e.target.value)}
-                className="appearance-none bg-white/5 border border-white/15 rounded-md
-                  text-xs text-slate-200 px-3 py-1.5 pr-7
-                  cursor-pointer hover:bg-white/10
-                  focus:outline-none focus:border-white/30
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                  transition-colors"
+                className="appearance-none bg-white/5 border border-white/15 rounded-md text-xs text-slate-200 px-3 py-1.5 pr-7 cursor-pointer hover:bg-white/10 focus:outline-none focus:border-white/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {JURISDICTION_OPTIONS.map((opt) => (
-                  <option
-                    key={opt.value}
-                    value={opt.value}
-                    className="bg-[#0a0f1a] text-white"
-                  >
-                    {opt.label}
-                  </option>
+                  <option key={opt.value} value={opt.value} className="bg-[#0a0f1a] text-white">{opt.label}</option>
                 ))}
               </select>
               <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-400">
@@ -446,25 +374,15 @@ export default function DashboardPage({
               </div>
             </div>
           </div>
-
-          {/* Right: chain status + hash + logout */}
           <div className="flex items-center gap-3">
             <div className={`px-3 py-1 rounded-full text-[11px] font-medium flex items-center gap-2 ${
-              chainIntact
-                ? "bg-emerald-500/15 text-emerald-200 border border-emerald-400/60"
-                : "bg-red-500/15 text-red-200 border border-red-500/60"
+              chainIntact ? "bg-emerald-500/15 text-emerald-200 border border-emerald-400/60" : "bg-red-500/15 text-red-200 border border-red-500/60"
             }`}>
               <span className="h-1.5 w-1.5 rounded-full bg-current" />
               {chainIntact ? "CHAIN INTACT" : "CHAIN BROKEN"}
             </div>
-            <div className="text-xs text-slate-300 font-mono">
-              {truncateHash(clientHash)}
-            </div>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="text-[11px] px-2 py-1 border border-white/20 rounded-md text-slate-200 hover:bg-white/10"
-            >
+            <div className="text-xs text-slate-300 font-mono">{truncateHash(clientHash)}</div>
+            <button type="button" onClick={handleLogout} className="text-[11px] px-2 py-1 border border-white/20 rounded-md text-slate-200 hover:bg-white/10">
               Logout
             </button>
           </div>
@@ -473,17 +391,13 @@ export default function DashboardPage({
 
       {/* ── Main content ── */}
       <div className="pt-20 pb-10 max-w-6xl mx-auto px-4 space-y-6">
-
-        {/* Zero state — no vault */}
         {isEmptyVault ? (
           <BlankSlate onCreateVault={() => router.push("/generate-key")} />
         ) : (
           <>
-            {/* Hero: accrual value */}
+            {/* Hero */}
             <section className="mt-4">
-              <p className="text-[11px] tracking-[0.3em] uppercase text-slate-400">
-                {config.heroLabel}
-              </p>
+              <p className="text-[11px] tracking-[0.3em] uppercase text-slate-400">{config.heroLabel}</p>
               <div className="mt-3">
                 {loading ? (
                   <div className="h-16 w-80 bg-white/5 rounded animate-pulse" />
@@ -494,6 +408,11 @@ export default function DashboardPage({
                 )}
               </div>
             </section>
+
+            {/* Friction Pulse */}
+            {summary && (
+              <FrictionPulse lastTimestamp={summary.last_audit_at} />
+            )}
 
             {/* Stats row */}
             <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -509,9 +428,7 @@ export default function DashboardPage({
                     {loading ? (
                       <div className="h-5 w-20 bg-white/5 rounded animate-pulse" />
                     ) : (
-                      <p className={`text-xl ${stat.mono ? "font-mono tabular-nums" : "text-xs text-slate-200"}`}>
-                        {stat.value}
-                      </p>
+                      <p className={`text-xl ${stat.mono ? "font-mono tabular-nums" : "text-xs text-slate-200"}`}>{stat.value}</p>
                     )}
                   </div>
                 </div>
@@ -524,7 +441,7 @@ export default function DashboardPage({
               <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4 max-h-[500px] flex flex-col">
                 <div className="mb-3">
                   <p className="text-[11px] tracking-[0.3em] uppercase text-[#4a90b8]">FORENSIC LEDGER</p>
-                  <p className="text-xs text-slate-400 mt-1">Last {blocks.length} blocks</p>
+                  <p className="text-xs text-slate-400 mt-1">Showing high-value signals only</p>
                 </div>
                 <div className="flex-1 overflow-y-auto pr-1">
                   {loading ? (
@@ -533,15 +450,15 @@ export default function DashboardPage({
                         <div key={i} className="h-16 w-full bg-white/5 rounded animate-pulse" />
                       ))}
                     </div>
-                  ) : blocks.length === 0 ? (
-                    <p className="text-xs text-slate-400">No chain events recorded.</p>
+                  ) : filteredBlocks.length === 0 ? (
+                    <p className="text-xs text-slate-400">No R&D signals captured yet. Connect Slack or GitHub to begin.</p>
                   ) : (
-                    blocks.map((block) => {
+                    filteredBlocks.map((block) => {
                       let badge = "border-slate-500/60 bg-slate-500/10 text-slate-100";
                       if (block.event_type === "FRICTION_SIGNAL") badge = "border-amber-400/70 bg-amber-500/10 text-amber-100";
+                      else if (block.event_type === "GITHUB_COMMIT") badge = "border-violet-400/70 bg-violet-500/10 text-violet-100";
                       else if (block.event_type === "AUDIT_SUMMARY") badge = "border-emerald-400/70 bg-emerald-500/10 text-emerald-100";
-                      else if (block.event_type === "VAULT_ACTIVATED") badge = "border-sky-400/70 bg-sky-500/10 text-sky-100";
-                      else if (block.event_type === "PAYMENT_ACTIVATION") badge = "border-[#C9A84C]/70 bg-[#C9A84C]/10 text-[#C9A84C]";
+                      else if (block.event_type === "COMPETENT_PROFESSIONAL_SIGNOFF") badge = "border-[#C9A84C]/70 bg-[#C9A84C]/10 text-[#C9A84C]";
 
                       const auditGbp = block.event_type === "AUDIT_SUMMARY" && block.metadata?.total_eligible_gbp
                         ? block.metadata.total_eligible_gbp : null;
@@ -568,36 +485,38 @@ export default function DashboardPage({
               </div>
             </section>
 
-            {/* ── CTO Integration Panel — active vaults only ── */}
-{summary?.is_active && clientHash && (
-  <section className="bg-[#0a0f1a] border border-[#1e3a5f] rounded-2xl p-6">
-    <div className="flex items-center gap-3 mb-5">
-      <div className="relative flex-shrink-0">
-        <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-        <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping opacity-60" />
-      </div>
-      <div>
-        <div className="text-[11px] tracking-[0.3em] uppercase text-emerald-400">System Active</div>
-        <div className="text-sm text-white font-medium mt-0.5">CTO Integration Webhooks</div>
-      </div>
-    </div>
-    <p className="text-xs text-slate-500 mb-5 leading-relaxed">
-      Connect your development pipeline. Every commit and technical friction signal is automatically vaulted as immutable R&D evidence.
-    </p>
-    <div className="space-y-4">
-      <CopyEndpoint
-        label="GitHub Webhook URL"
-        endpoint={`${BACKEND_URL}/github/webhook/${clientHash}`}
-        hint="Add in GitHub repo → Settings → Webhooks. Content type: application/json"
-      />
-      <CopyEndpoint
-        label="Slack Slash Command URL"
-        endpoint={`${BACKEND_URL}/slack/friction/${clientHash}`}
-        hint="Add as Slack slash command URL. Use /vault [signal text] to capture friction."
-      />
-    </div>
-  </section>
-)}{/* Export button */}
+            {/* CTO Integration Panel */}
+            {summary?.is_active && clientHash && (
+              <section className="bg-[#0a0f1a] border border-[#1e3a5f] rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="relative flex-shrink-0">
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                    <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping opacity-60" />
+                  </div>
+                  <div>
+                    <div className="text-[11px] tracking-[0.3em] uppercase text-emerald-400">System Active</div>
+                    <div className="text-sm text-white font-medium mt-0.5">CTO Integration Webhooks</div>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500 mb-5 leading-relaxed">
+                  Connect your development pipeline. Every commit and technical friction signal is automatically vaulted as immutable R&D evidence.
+                </p>
+                <div className="space-y-4">
+                  <CopyEndpoint
+                    label="GitHub Webhook URL"
+                    endpoint={`${BACKEND_URL}/github/webhook/${clientHash}`}
+                    hint="Add in GitHub repo → Settings → Webhooks. Content type: application/json"
+                  />
+                  <CopyEndpoint
+                    label="Slack Slash Command URL"
+                    endpoint={`${BACKEND_URL}/slack/friction/${clientHash}`}
+                    hint="Add as Slack slash command URL. Use /vault [signal text] to capture friction."
+                  />
+                </div>
+              </section>
+            )}
+
+            {/* Export button */}
             {showExportButton && clientHash && (
               <section className="flex justify-end mt-2">
                 <div className="relative group">
@@ -688,11 +607,7 @@ export default function DashboardPage({
       )}
 
       {/* ── VaultDrawer ── */}
-      <VaultDrawer
-        open={drawerOpen}
-        clientHash={clientHash ?? ""}
-        onClose={() => setDrawerOpen(false)}
-      />
+      <VaultDrawer open={drawerOpen} clientHash={clientHash ?? ""} onClose={() => setDrawerOpen(false)} />
 
       {/* ── CP Modal ── */}
       <CompetentProfModal
@@ -700,10 +615,7 @@ export default function DashboardPage({
         clientHash={clientHash ?? ""}
         jurisdiction={jurisdiction}
         onClose={() => setShowCPModal(false)}
-        onSuccess={async () => {
-          if (!clientHash) return;
-          await loadData(clientHash);
-        }}
+        onSuccess={async () => { if (!clientHash) return; await loadData(clientHash); }}
       />
     </div>
   );
